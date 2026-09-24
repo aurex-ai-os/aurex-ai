@@ -562,6 +562,24 @@ function _initModelPickerDropdown() {
         return [m.mid, m.display, m.epName, m.providerText, provName]
           .filter(Boolean).join(' ').toLowerCase().includes(q);
       });
+      
+      // Sort matches by "power" and "context limit" (higher = top)
+      matches.sort((a, b) => {
+        const score = (m) => {
+          let s = 0;
+          const str = String(m.mid).toLowerCase();
+          // Context limit
+          if (str.includes('1m') || str.includes('200k') || str.includes('128k') || str.includes('pro')) s += 100;
+          if (str.includes('64k') || str.includes('32k')) s += 50;
+          // Power/Size
+          if (str.includes('gpt-4') || str.includes('opus') || str.includes('405b') || str.includes('large') || str.includes('o1')) s += 300;
+          else if (str.includes('sonnet') || str.includes('70b') || str.includes('72b')) s += 200;
+          else if (str.includes('haiku') || str.includes('flash') || str.includes('8b')) s += 100;
+          return s;
+        };
+        return score(b) - score(a) || a.display.localeCompare(b.display);
+      });
+
       if (matches.length === 0) _addEmpty('No matching models');
       else matches.forEach(_addRow);
       return;
