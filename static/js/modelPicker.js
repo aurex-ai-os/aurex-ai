@@ -302,6 +302,13 @@ function _initModelPickerDropdown() {
           : mid;
         if (seen.has(seenKey)) return;
         seen.add(seenKey);
+        // Simple capability tagging for UI search
+        const lower = mid.toLowerCase();
+        const caps = [];
+        if (lower.includes('vision') || lower.includes('gpt-4o') || lower.includes('sonnet') || lower.includes('pixtral') || lower.includes('llava') || lower.includes('gemini-1.5')) caps.push('vision');
+        if (lower.includes('coder') || lower.includes('code') || lower.includes('sonnet') || lower.includes('qwen2.5-coder')) caps.push('coding coder code');
+        if (lower.includes('o1') || lower.includes('r1') || lower.includes('reasoning') || lower.includes('math')) caps.push('reasoning math');
+
         result.push({
           key: seenKey,
           mid,
@@ -315,6 +322,7 @@ function _initModelPickerDropdown() {
             item.category || '',
             item.host || '',
             item.url || '',
+            caps.join(' ')
           ].filter(Boolean).join(' '),
           stale: isLocalDead || epOffline,
           staleReason: epOffline
