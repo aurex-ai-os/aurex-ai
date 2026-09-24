@@ -1,0 +1,85 @@
+/* Phase B: Action Ledger (Timeline View) */
+.chat-container {
+  position: relative;
+  /* Make room for the ledger line on the left */
+  padding-left: 28px !important;
+}
+
+/* The vertical glowing line */
+.chat-container::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  bottom: 0;
+  left: 12px;
+  width: 2px;
+  background: linear-gradient(to bottom, transparent, var(--aurex-accent) 10%, var(--aurex-accent) 90%, transparent);
+  opacity: 0.2;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* The nodes for messages */
+.msg {
+  position: relative;
+  overflow: visible !important;
+}
+
+.msg::before {
+  content: '';
+  position: absolute;
+  top: 24px;
+  left: calc(-28px + 12px - 3px); /* 12px is line left, 3px is half of 8px width */
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--aurex-bg);
+  border: 2px solid var(--aurex-accent);
+  z-index: 1;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--aurex-accent) 60%, transparent);
+}
+
+.msg-user::before {
+  border-color: var(--fg);
+  box-shadow: none;
+  opacity: 0.3;
+}
+
+/* Tool Execution Nodes */
+.agent-thread {
+  position: relative;
+  overflow: visible !important;
+}
+.agent-thread::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: calc(-28px + 12px - 3px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--aurex-accent);
+  z-index: 1;
+  box-shadow: 0 0 10px var(--aurex-accent);
+}
+
+/* Redesign Execution Blocks */
+.agent-thread-node {
+  background: color-mix(in srgb, var(--aurex-surface) 60%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--aurex-accent) 20%, transparent) !important;
+  border-radius: var(--aurex-radius) !important;
+  box-shadow: var(--aurex-shadow-sm) !important;
+  margin-bottom: 8px !important;
+  overflow: hidden;
+}
+.agent-thread-header {
+  background: color-mix(in srgb, var(--aurex-accent) 5%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--aurex-accent) 10%, transparent) !important;
+  font-family: monospace;
+  font-size: 0.75rem;
+  padding: 6px 12px !important;
+}
+.agent-thread-cmd, .agent-thread-content {
+  font-family: monospace;
+  font-size: 0.75rem;
+}
