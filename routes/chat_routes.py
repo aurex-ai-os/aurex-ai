@@ -1886,8 +1886,12 @@ def setup_chat_routes(
                 )
                 
                 # Check if task requires tools
-                if len(body.get("tools", [])) > 0:
+                if body and len(body.get("tools", [])) > 0:
                     req.hard_capabilities.add(Capability.TOOL_CALLING)
+                    
+                # Check if task requires vision
+                if _first_image_attachment(chat_handler, att_ids, owner=_user):
+                    req.hard_capabilities.add(Capability.VISION)
                     
                 decision = engine.select_route(req)
                 
