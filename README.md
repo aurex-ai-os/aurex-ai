@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# aurex-ai
-=======
 <p align="center">
   <img src="assets/branding/aurex-wordmark.png" alt="Aurex" width="238">
 </p>
@@ -82,4 +79,3 @@ Deployment details are in the [setup guide](website/setup.md#security-notes).
 ## License
 
 AGPL-3.0-or-later -- see [LICENSE](LICENSE) and [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
->>>>>>> 8afafb9 (feat: Integrated Student Intelligence engine and OmniRoute pools)
