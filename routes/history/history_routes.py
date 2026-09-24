@@ -307,7 +307,8 @@ def setup_history_routes(session_manager, upload_handler=None) -> APIRouter:
                     # Remove from in-memory history by matching _db_id
                     def _get_db_id(m):
                         meta = m.metadata if isinstance(m, ChatMessage) else (m.get('metadata') if isinstance(m, dict) else None)
-                        return meta.get('_db_id') if isinstance(meta, dict) else None
+                        val = meta.get('_db_id') if isinstance(meta, dict) else None
+                        return str(val) if val is not None else None
                     session.history = [m for m in session.history if _get_db_id(m) not in msg_ids]
                 elif indices:
                     # Legacy index-based delete
