@@ -392,6 +392,33 @@ def analyze_image_with_vl(image_path: str, owner: str | None = None) -> str:
     return analyze_image_with_vl_result(image_path, owner=owner).get("text", "")
 
 
+def _auto_enhance_image(image_bytes: bytes) -> bytes:
+    """Auto-enhance low-quality/blurry images to improve OCR/Vision."""
+    try:
+        from PIL import Image, ImageEnhance
+        import io
+        img = Image.open(io.BytesIO(image_bytes))
+        
+        # Keep transparency if present, otherwise convert to RGB
+        if img.mode not in ('RGB', 'L', 'RGBA'):
+            img = img.convert('RGB')
+            
+        # 1. Contrast enhancement (makes text/lines pop)
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(1.5)
+        
+        # 2. Sharpness enhancement (helps with blur)
+        enhancer = ImageEnhance.Sharpness(img)
+        img = enhancer.enhance(2.0)
+        
+        out = io.BytesIO()
+        img.save(out, format="PNG" if img.mode == 'RGBA' else "JPEG", quality=95)
+        return out.getvalue()
+    except Exception as e:
+        logger.warning(f"Auto-enhance failed, using original: {e}")
+        return image_bytes
+
+
 def build_user_content(
     text: str,
     attachment_ids: list[str] | None,
@@ -439,11 +466,15 @@ def build_user_content(
         if upload_handler.is_image_file(display_name, mime):
             try:
                 with open(path, "rb") as image_file:
-                    encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-                # Extensionless uploads (e.g. a pasted screenshot) have no ext,
-                # so fall back to the resolved MIME subtype rather than emitting
-                # an invalid "data:image/;base64," with an empty subtype.
-                image_format = ext[1:] or (mime.split("/", 1)[1] if mime.startswith("image/") else "png")
+                    raw_bytes = image_file.read()
+                    
+                enhanced_bytes = _auto_enhance_image(raw_bytes)
+                encoded_string = base64.b64encode(enhanced_bytes).decode("utf-8")
+                
+                # Determine format based on output of enhance (PNG or JPEG)
+                is_rgba = b'IHDR' in enhanced_bytes[:50] # Simple PNG check
+                image_format = "png" if is_rgba else "jpeg"
+                
                 content.append({
                     "type": "image_url",
                     "image_url": {"url": f"data:image/{image_format};base64,{encoded_string}"},
