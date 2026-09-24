@@ -504,7 +504,7 @@
           document.querySelectorAll('.welcome-card').forEach(card => {
             card.addEventListener('click', () => {
               const prompt = card.getAttribute('data-prompt');
-              const textarea = document.getElementById('chat-input');
+              const textarea = document.getElementById('message');
               if (textarea) {
                 textarea.value = prompt;
                 textarea.focus();
