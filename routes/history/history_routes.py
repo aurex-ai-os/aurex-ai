@@ -297,8 +297,12 @@ def setup_history_routes(session_manager, upload_handler=None) -> APIRouter:
                     # New ID-based delete
                     deleted = 0
                     for mid in msg_ids:
+                        try:
+                            mid_int = int(mid)
+                        except (ValueError, TypeError):
+                            continue
                         db_msg = db.query(DbChatMessage).filter(
-                            DbChatMessage.id == mid,
+                            DbChatMessage.id == mid_int,
                             DbChatMessage.session_id == session_id,
                         ).first()
                         if db_msg:
