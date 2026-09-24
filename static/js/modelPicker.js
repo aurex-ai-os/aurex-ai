@@ -305,7 +305,9 @@ function _initModelPickerDropdown() {
         // Simple capability tagging for UI search
         const lower = mid.toLowerCase();
         const caps = [];
-        if (lower.includes('vision') || lower.includes('gpt-4o') || lower.includes('sonnet') || lower.includes('pixtral') || lower.includes('llava') || lower.includes('gemini-1.5')) caps.push('vision');
+        const meta = (item.models_meta || {})[mid] || {};
+        
+        if (meta.is_vision || lower.includes('vision') || lower.includes('gpt-4o') || lower.includes('sonnet') || lower.includes('pixtral') || lower.includes('llava') || lower.includes('gemini-1.5')) caps.push('vision');
         if (lower.includes('coder') || lower.includes('code') || lower.includes('sonnet') || lower.includes('qwen2.5-coder')) caps.push('coding coder code');
         if (lower.includes('o1') || lower.includes('r1') || lower.includes('reasoning') || lower.includes('math')) caps.push('reasoning math');
 
@@ -329,6 +331,9 @@ function _initModelPickerDropdown() {
             ? (item.ping_error || 'endpoint offline')
             : (isLocalDead ? (probeResult.error || 'not responding') : ''),
           offline: epOffline,
+          caps: caps.join(' '),
+          contextLength: meta.context_length || 0,
+          isFree: meta.is_free || lower.includes(':free') || lower.includes('-free')
         });
       });
     });
@@ -498,12 +503,28 @@ function _initModelPickerDropdown() {
       nameSpan.title = m.display;
       row.appendChild(nameSpan);
 
-      // Show a [Free] tag if the model ID explicitly contains "free" (common for OpenRouter)
-      if (m.mid.toLowerCase().includes(':free') || m.mid.toLowerCase().includes('-free')) {
+      // Show a [Free] tag if the model is free
+      if (m.isFree || m.mid.toLowerCase().includes(':free') || m.mid.toLowerCase().includes('-free')) {
         const freeTag = document.createElement('span');
         freeTag.style.cssText = 'margin-left:6px; font-size:10px; font-weight:700; background:var(--green, #50fa7b); color:#000; padding:1px 5px; border-radius:4px; flex-shrink:0;';
         freeTag.textContent = 'FREE';
         row.appendChild(freeTag);
+      }
+      
+      if (m.caps && m.caps.includes('vision')) {
+        const visionTag = document.createElement('span');
+        visionTag.style.cssText = 'margin-left:6px; font-size:10px; font-weight:700; background:var(--cyan, #8be9fd); color:#000; padding:1px 5px; border-radius:4px; flex-shrink:0;';
+        visionTag.textContent = 'VISION';
+        row.appendChild(visionTag);
+      }
+      
+      if (m.contextLength) {
+        const ctxTag = document.createElement('span');
+        ctxTag.style.cssText = 'margin-left:6px; font-size:10px; font-weight:500; background:var(--bg-layer-2, #282a36); color:var(--text-muted, #6272a4); border:1px solid var(--border-color, #44475a); padding:0 4px; border-radius:4px; flex-shrink:0;';
+        const kLimit = Math.round(m.contextLength / 1024);
+        ctxTag.textContent = `${kLimit}K`;
+        ctxTag.title = `${m.contextLength.toLocaleString()} tokens`;
+        row.appendChild(ctxTag);
       }
       // Offline state is already conveyed by the row's reduced opacity —
       // a redundant "offline" pill on top of that just added clutter.
@@ -559,16 +580,20 @@ function _initModelPickerDropdown() {
     if (q) {
       const matches = all.filter(m => {
         const provName = _providerDisplayName(_providerSlug(m.mid)).toLowerCase();
-        return [m.mid, m.display, m.epName, m.providerText, provName]
-          .filter(Boolean).join(' ').toLowerCase().includes(q);
+        const searchStr = [m.mid, m.display, m.epName, m.providerText, provName, m.isFree ? 'free' : '']
+          .filter(Boolean).join(' ').toLowerCase();
+        return searchStr.includes(q);
       });
       
-      // Sort matches by "power" and "context limit" (higher = top)
+      // Sort matches by free status, power, and context limit (higher = top)
       matches.sort((a, b) => {
         const score = (m) => {
           let s = 0;
+          if (m.isFree) s += 1000;
+          if (m.contextLength) s += Math.min(Math.floor(m.contextLength / 1000), 500); // Up to 500 points for context length
+          
           const str = String(m.mid).toLowerCase();
-          // Context limit
+          // Context limit fallback for hardcoded rules
           if (str.includes('1m') || str.includes('200k') || str.includes('128k') || str.includes('pro')) s += 100;
           if (str.includes('64k') || str.includes('32k')) s += 50;
           // Power/Size
@@ -599,6 +624,19 @@ function _initModelPickerDropdown() {
     if (favModels.length) {
       _addSection('Favorites');
       favModels.forEach(m => { shown.add(_pickerModelKey(m)); _addRow(m); });
+    }
+    
+    // Free models section
+    const freeModels = all.filter(m => m.isFree && !shown.has(_pickerModelKey(m)));
+    if (freeModels.length) {
+      // Sort free models by power/context limits
+      freeModels.sort((a, b) => {
+        let sa = (a.contextLength || 0) + (a.caps && a.caps.includes('vision') ? 50 : 0);
+        let sb = (b.contextLength || 0) + (b.caps && b.caps.includes('vision') ? 50 : 0);
+        return sb - sa;
+      });
+      _addSection('Free models');
+      freeModels.forEach(m => { shown.add(_pickerModelKey(m)); _addRow(m); });
     }
     // Recent: only render when the catalog is big enough that surfacing
     // a recency shortlist is actually useful, AND only models that

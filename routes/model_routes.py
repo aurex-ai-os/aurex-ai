@@ -1581,6 +1581,19 @@ def setup_model_routes(model_discovery):
                     if m not in curated:
                         curated.append(m)
                 extra = [m for m in extra if m not in pinned]
+                
+                # Fetch metadata for frontend filtering
+                from src.model_context import get_context_length
+                from src.chat_helpers import is_vision_model
+                models_meta = {}
+                for m in curated + extra:
+                    ml = m.lower()
+                    models_meta[m] = {
+                        "context_length": get_context_length(chat_url, m),
+                        "is_vision": is_vision_model(m),
+                        "is_free": (":free" in ml or "-free" in ml),
+                    }
+                
                 items.append({
                     "host": "custom",
                     "port": 0,
@@ -1589,6 +1602,7 @@ def setup_model_routes(model_discovery):
                     "models_display": [_model_display_name(mid) for mid in curated],
                     "models_extra": extra,
                     "models_extra_display": [_model_display_name(mid) for mid in extra],
+                    "models_meta": models_meta,
                     "endpoint_id": ep.id,
                     "endpoint_name": ep.name,
                     "category": category,
@@ -1605,6 +1619,7 @@ def setup_model_routes(model_discovery):
                     "models_display": [],
                     "models_extra": [],
                     "models_extra_display": [],
+                    "models_meta": {},
                     "endpoint_id": ep.id,
                     "endpoint_name": ep.name,
                     "category": category,
