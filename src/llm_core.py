@@ -1670,7 +1670,7 @@ def _is_untrusted_context_content(content) -> bool:
 _REFERENCE_CONTEXT_BOUNDARY = "Reference context received."
 
 
-def _sanitize_llm_messages(messages: List[Dict]) -> List[Dict]:
+def _sanitize_llm_messages(messages: List[Dict], model: str = "") -> List[Dict]:
     """Strip Aurex-only metadata before sending messages to providers.
 
     Per the OpenAI chat format: user/system messages must have content; a tool
@@ -1682,11 +1682,23 @@ def _sanitize_llm_messages(messages: List[Dict]) -> List[Dict]:
     it leaves the tool result dangling and breaks the next round.
     """
     allowed = {"role", "content", "name", "tool_call_id", "tool_calls", "function_call", "reasoning_content"}
+    
+    from src.chat_helpers import is_vision_model
+    strip_images = bool(model and not is_vision_model(model))
+
     cleaned = []
     for msg in messages or []:
         if not isinstance(msg, dict):
             continue
         item = {k: v for k, v in msg.items() if k in allowed and v is not None}
+        
+        if strip_images and isinstance(item.get("content"), list):
+            text_parts = [
+                part.get("text", "") for part in item["content"]
+                if isinstance(part, dict) and part.get("type") == "text"
+            ]
+            item["content"] = "\n".join(text_parts).strip()
+            
         role = item.get("role")
         if not role:
             continue
@@ -1982,7 +1994,7 @@ def llm_call(url: str, model: str, messages: List[Dict], temperature: float = LL
     if isinstance(headers, dict):
         h.update(headers)
 
-    messages_copy = _sanitize_llm_messages(messages)
+    messages_copy = _sanitize_llm_messages(messages, model)
 
     # Consolidate multiple system messages into one at the start.
     sys_parts = []
@@ -2279,7 +2291,7 @@ async def llm_call_async(
 ) -> str | tuple[str, str]:
     """Asynchronous LLM call using httpx with connection pooling, timeout, retry logic, and performance logging."""
     provider = _detect_provider(url)
-    messages_copy = _sanitize_llm_messages(messages)
+    messages_copy = _sanitize_llm_messages(messages, model)
 
     # Consolidate multiple system messages into one at the start.
     sys_parts = []
@@ -2599,7 +2611,7 @@ async def _stream_llm_inner(url: str, model: str, messages: List[Dict], temperat
       - data: [DONE]                       — end of stream
     """
     provider = _detect_provider(url)
-    messages_copy = _sanitize_llm_messages(messages)
+    messages_copy = _sanitize_llm_messages(messages, model)
 
     # Consolidate multiple system messages into one at the start.
     # Some models (e.g. Qwen3.5) reject system messages that aren't first.
