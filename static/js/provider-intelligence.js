@@ -28,7 +28,7 @@
     // API Fetch
     async function fetchState() {
         try {
-            const res = await fetch('/api/v1/provider-intelligence/state');
+            const res = await fetch('/api/v1/provider-intelligence/state', { credentials: 'same-origin' });
             if(res.ok) {
                 piState = await res.json();
                 renderAll();

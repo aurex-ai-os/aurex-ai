@@ -36,7 +36,6 @@ def get_pi_state():
                 "name": prov_name,
                 "is_local": is_local,
                 "health": "HEALTHY",
-                        "is_free": "free" in m_id.lower() or "llama" in m_id.lower() or "mistral" in m_id.lower() or "qwen" in m_id.lower() or is_local,
                 "latency_ms": 15 if is_local else 60,
                 "models_count": len(item_models)
             })
@@ -87,7 +86,6 @@ def get_pi_state():
                     "name": prov_name,
                     "is_local": is_local,
                     "health": "HEALTHY",
-                        "is_free": "free" in m_id.lower() or "llama" in m_id.lower() or "mistral" in m_id.lower() or "qwen" in m_id.lower() or is_local,
                     "latency_ms": 35 if is_local else 140,
                     "models_count": len(ep_models)
                 })
@@ -102,7 +100,7 @@ def get_pi_state():
                             "name": m_id.lstrip("/"),
                             "is_local": is_local,
                             "health": "HEALTHY",
-                        "is_free": "free" in m_id.lower() or "llama" in m_id.lower() or "mistral" in m_id.lower() or "qwen" in m_id.lower() or is_local,
+                            "is_free": "free" in m_id.lower() or "llama" in m_id.lower() or "mistral" in m_id.lower() or "qwen" in m_id.lower() or is_local,
                             "capabilities": [c.value for c in caps],
                             "context_window": 128000
                         })
