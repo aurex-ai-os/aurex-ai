@@ -2641,6 +2641,9 @@ async def _stream_llm_inner(url: str, model: str, messages: List[Dict], temperat
         if max_tokens and max_tokens > 0:
             tok_key = "max_completion_tokens" if _uses_max_completion_tokens(model) else "max_tokens"
             payload[tok_key] = max_tokens
+        elif provider == "openrouter":
+            tok_key = "max_completion_tokens" if _uses_max_completion_tokens(model) else "max_tokens"
+            payload[tok_key] = 2048
         if tools:
             payload["tools"] = _alias_harmony_tools(tools, model)
         elif tool_choice_none:
