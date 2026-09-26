@@ -2030,7 +2030,7 @@ import { loadPanel } from './panels.js';
       }
 
       var roleLabel = _modelRouteLabel(modelName, modelName);
-      var _charNameInit = presetsModule.getCharacterName ? presetsModule.getCharacterName() : '';
+      var _charNameInit = (typeof presetsModule !== 'undefined' && presetsModule && presetsModule.getCharacterName) ? presetsModule.getCharacterName() : '';
       roleLabel = _charNameInit || 'Aurex';
       const roleTs = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       holder.innerHTML = `<div class="role">${uiModule.esc(roleLabel)} <span class="role-timestamp">${roleTs}</span></div><div class="body"></div>`;
@@ -4974,7 +4974,7 @@ import { loadPanel } from './panels.js';
     const holder = document.createElement('div');
     holder.className = 'msg msg-ai';
     const meta = sessionModule.getSessions().find(s => s.id === sessionId);
-    var _charNameInit = presetsModule.getCharacterName ? presetsModule.getCharacterName() : '';
+    var _charNameInit = (typeof presetsModule !== 'undefined' && presetsModule && presetsModule.getCharacterName) ? presetsModule.getCharacterName() : '';
     const roleLabel = _charNameInit || 'Aurex';
     const roleTs = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     holder.innerHTML = '<div class="role">' + uiModule.esc(roleLabel) +
@@ -5224,7 +5224,7 @@ import { loadPanel } from './panels.js';
       var holder = document.createElement('div');
       holder.className = 'msg msg-ai';
       var meta = sessionModule.getSessions().find(function(s) { return s.id === sessionId; });
-      var _charNameInit = presetsModule.getCharacterName ? presetsModule.getCharacterName() : '';
+      var _charNameInit = (typeof presetsModule !== 'undefined' && presetsModule && presetsModule.getCharacterName) ? presetsModule.getCharacterName() : '';
       var roleLabel = _charNameInit || 'Aurex';
       var roleTs = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       holder.innerHTML = '<div class="role">' + uiModule.esc(roleLabel) + ' <span class="role-timestamp">' + roleTs + '</span></div><div class="body"></div>';

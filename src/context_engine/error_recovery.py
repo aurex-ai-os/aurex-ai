@@ -65,7 +65,7 @@ class ErrorClassifier:
         if status_code == 413:
             return ErrorClass.CONTEXT_OVERFLOW
 
-        if status_code in (502, 503, 504):
+        if status_code in (402, 502, 503, 504):
             return ErrorClass.PROVIDER_UNAVAILABLE
 
         if status_code == 404:

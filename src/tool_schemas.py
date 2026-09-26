@@ -659,6 +659,29 @@ FUNCTION_TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "manage_obsidian",
+            "description": "Interact with the user's Obsidian Vault (/home/ali/Vault) and Knowledge Graph: list notes, read full content and backlinks, create/update atomic notes with LaTeX and [[wikilinks]], append content, search notes, view graph statistics and top hubs, find incoming/outgoing connections, or open notes directly in the native Obsidian desktop app via URI. Use this whenever the user asks about Obsidian notes, knowledge graphs, study materials, formulas, theorems, bridges, or wants to edit/create notes in their vault.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list", "read", "create", "update", "append", "search", "graph_stats", "get_links", "open_in_app"],
+                        "description": "Action to perform on Obsidian vault"
+                    },
+                    "path": {"type": "string", "description": "Relative path or note title in vault (e.g. 'Theorems/Cayley-Hamilton Theorem.md', 'Concepts/Determinants')"},
+                    "content": {"type": "string", "description": "Markdown body text with optional frontmatter, [[wikilinks]], and LaTeX ($...$, $$...$$) for create/update/append"},
+                    "query": {"type": "string", "description": "Search query for action='search'"},
+                    "folder": {"type": "string", "description": "Subfolder filter (e.g. 'Theorems', 'Definitions', 'Concepts', 'Bridges', 'Flashcards', 'Examples', 'Study Plan')"},
+                    "tag": {"type": "string", "description": "Tag filter for action='list'"}
+                },
+                "required": ["action"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "api_call",
             "description": "Call a registered API integration (RSS reader, git forge, bookmark manager, smart home, etc.). Check the system context for available integrations and their endpoints.",
             "parameters": {

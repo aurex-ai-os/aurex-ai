@@ -881,29 +881,27 @@ def setup_chat_routes(
             p_reg = ProviderRegistry()
             m_reg = ModelRegistry()
             
-            sync_legacy_to_registry(p_reg, m_reg, {}, sess.endpoint_url, sess.model, legacy_candidates[1:] if len(legacy_candidates)>1 else [])
+            sync_legacy_to_registry(p_reg, m_reg, {}, sess.endpoint_url, sess.model, legacy_candidates[1:] if len(legacy_candidates)>1 else [], owner=owner, primary_headers=sess.headers)
             
             selector = CandidateSelector(p_reg, m_reg, HealthManager(), QuotaManager())
             engine = RoutingEngine(selector)
             
             req = TaskRequirements(hard_capabilities={Capability.TEXT_GENERATION})
+            if getattr(chat_request, "chat_mode", "") == "agent" or getattr(chat_request, "plan_mode", False) or getattr(chat_request, "allow_bash", False):
+                req.hard_capabilities.add(Capability.TOOL_CALLING)
             decision = engine.select_route(req)
             
             if decision.route_type != "FAILED":
-                # Reconstruct candidate list putting selected model first
-                # (For now, we map back to the legacy tuple structure)
-                selected_cand = None
-                for c in legacy_candidates:
-                    if c[1] == decision.selected_model_id:
-                        selected_cand = c
-                        break
-                
-                if selected_cand:
-                    # Filter to only valid fallbacks approved by Provider Intelligence
-                    valid_cands = [decision.selected_model_id] + [f.split("::")[1] for f in decision.fallback_candidates]
-                    foreground_candidates = [c for c in legacy_candidates if c[1] in valid_cands]
-                else:
+                if decision.selected_provider_id == "primary" or decision.selected_model_id == sess.model:
                     foreground_candidates = legacy_candidates
+                else:
+                    selected_prov = p_reg.get_provider(decision.selected_provider_id)
+                    if selected_prov and decision.selected_model_id:
+                        _switched_cand = (selected_prov.endpoint_url, decision.selected_model_id, selected_prov.metadata.get("headers", {}))
+                        foreground_candidates = [_switched_cand] + [c for c in legacy_candidates if c != _switched_cand]
+                    else:
+                        valid_cands = [decision.selected_model_id] + [f.split("::")[1] for f in decision.fallback_candidates]
+                        foreground_candidates = [c for c in legacy_candidates if c[1] in valid_cands] or legacy_candidates
             else:
                 foreground_candidates = legacy_candidates
         except Exception as e:
@@ -1875,7 +1873,7 @@ def setup_chat_routes(
                 p_reg = ProviderRegistry()
                 m_reg = ModelRegistry()
                 
-                sync_legacy_to_registry(p_reg, m_reg, {}, sess.endpoint_url, sess.model, _legacy_candidates[1:] if len(_legacy_candidates)>1 else [])
+                sync_legacy_to_registry(p_reg, m_reg, {}, sess.endpoint_url, sess.model, _legacy_candidates[1:] if len(_legacy_candidates)>1 else [], owner=_user, primary_headers=sess.headers)
                 
                 selector = CandidateSelector(p_reg, m_reg, HealthManager(), QuotaManager())
                 engine = RoutingEngine(selector)
@@ -1886,28 +1884,58 @@ def setup_chat_routes(
                 )
                 
                 # Check if task requires tools
-                if body and len(body.get("tools", [])) > 0:
+                needs_tools = (
+                    _effective_mode == "agent"
+                    or chat_mode == "agent"
+                    or plan_mode
+                    or bool(body and len(body.get("tools", [])) > 0)
+                    or bool(_tool_intent and _tool_intent.needs_tools)
+                    or bool(allow_bash)
+                )
+                if needs_tools:
                     req.hard_capabilities.add(Capability.TOOL_CALLING)
                     
                 # Check if task requires vision
-                if _first_image_attachment(chat_handler, att_ids, owner=_user):
+                needs_vision = bool(
+                    _first_image_attachment(chat_handler, att_ids, owner=_user)
+                    or (effective_att_ids and any(
+                        files_by_id.get(aid, {}).get("mime", "").startswith("image/")
+                        or (upload_handler.is_image_file(files_by_id.get(aid, {}).get("name", ""), files_by_id.get(aid, {}).get("mime", "")) if hasattr(upload_handler, "is_image_file") else False)
+                        for aid in effective_att_ids
+                        if aid in files_by_id
+                    ))
+                )
+                if needs_vision:
                     req.hard_capabilities.add(Capability.VISION)
                     
                 decision = engine.select_route(req)
                 
                 if decision.route_type != "FAILED":
-                    # Filter legacy candidates to only those that match valid fallback decisions
-                    valid_cands = [decision.selected_model_id] + [f.split("::")[1] for f in decision.fallback_candidates]
-                    _foreground_candidates = [c for c in _legacy_candidates if c[1] in valid_cands]
+                    if decision.selected_provider_id == "primary" or decision.selected_model_id == sess.model:
+                        _foreground_candidates = _legacy_candidates
+                    else:
+                        selected_prov = p_reg.get_provider(decision.selected_provider_id)
+                        if selected_prov and decision.selected_model_id:
+                            _switched_url = selected_prov.endpoint_url
+                            _switched_model = decision.selected_model_id
+                            _switched_headers = selected_prov.metadata.get("headers", {})
+                            _switched_tuple = (_switched_url, _switched_model, _switched_headers)
+                            _foreground_candidates = [_switched_tuple] + [c for c in _legacy_candidates if c != _switched_tuple]
+                        else:
+                            valid_cands = [decision.selected_model_id] + [f.split("::")[1] for f in decision.fallback_candidates]
+                            _foreground_candidates = [c for c in _legacy_candidates if c[1] in valid_cands] or _legacy_candidates
                 else:
                     _foreground_candidates = _legacy_candidates
             except Exception as e:
                 logger.warning(f"[ProviderIntelligence] Stream Routing failed, falling back to legacy: {e}")
                 _foreground_candidates = _legacy_candidates
+            _active_url = _foreground_candidates[0][0] if _foreground_candidates else sess.endpoint_url
+            _active_model = _foreground_candidates[0][1] if _foreground_candidates else sess.model
+            _active_headers = _foreground_candidates[0][2] if _foreground_candidates else sess.headers
             _foreground_route_descriptors = build_foreground_route_descriptors(
-                sess.endpoint_url,
-                sess.model,
-                sess.headers,
+                _active_url,
+                _active_model,
+                _active_headers,
                 owner=_user,
                 policy=_foreground_policy,
                 selected_endpoint_id=selected_endpoint_id,
@@ -1932,11 +1960,14 @@ def setup_chat_routes(
             _selected_route = _foreground_route_descriptors[0]
             _model_info = {
                 "type": "model_info",
-                "model": sess.model,
+                "model": _active_model,
                 "endpoint_id": _selected_route.get("endpoint_id"),
                 "endpoint_label": _selected_route.get("endpoint_label"),
             }
-            if _model_suffix:
+            if _active_model != sess.model:
+                _caps_tags = [c.value.lower() for c in req.hard_capabilities if c != Capability.TEXT_GENERATION]
+                _model_info["suffix"] = f"Auto-switched ({', '.join(_caps_tags) if _caps_tags else 'optimized'})"
+            elif _model_suffix:
                 _model_info["suffix"] = _model_suffix
             if ctx.preset.character_name:
                 _model_info["character_name"] = ctx.preset.character_name
@@ -2420,11 +2451,15 @@ def setup_chat_routes(
                     elif _explicit_browser_intent:
                         _forced_tools = set(_BROWSER_MCP_TOOLS)
 
+                    _agent_url = _foreground_candidates[0][0] if _foreground_candidates else sess.endpoint_url
+                    _agent_model = _foreground_candidates[0][1] if _foreground_candidates else sess.model
+                    _agent_headers = _foreground_candidates[0][2] if _foreground_candidates else sess.headers
+
                     async for chunk in stream_agent_loop(
-                        sess.endpoint_url,
-                        sess.model,
+                        _agent_url,
+                        _agent_model,
                         messages,
-                        headers=sess.headers,
+                        headers=_agent_headers,
                         temperature=ctx.preset.temperature,
                         max_tokens=ctx.preset.max_tokens,
                         prompt_type=preset_id,

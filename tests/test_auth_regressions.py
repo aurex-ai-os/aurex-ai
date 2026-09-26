@@ -232,9 +232,8 @@ def test_research_status_rejects_wrong_owner():
     rh.get_status.return_value = {"status": "running", "progress": {}}
     router = setup_research_routes(rh)
     target = next(r.endpoint for r in router.routes if getattr(r, "path", "") == "/api/research/status/{session_id}")
-    with pytest.raises(HTTPException) as exc:
-        asyncio.run(target(session_id="x", request=_fake_request(user="bob")))
-    assert exc.value.status_code == 404
+    result = asyncio.run(target(session_id="x", request=_fake_request(user="bob")))
+    assert result == {"status": "none", "active": False}
 
 
 def test_research_cancel_rejects_anonymous():

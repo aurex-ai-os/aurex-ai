@@ -31,7 +31,7 @@ def app_module(monkeypatch):
 
     app_mod.SessionLocal = MagicMock()
     app_mod.logger = MagicMock()
-    app_mod.auth_manager.setup("admin", "TestPass123!")
+    app_mod.auth_manager._config = {"users": {"admin": {"is_admin": True}}}
 
     return app_mod
 

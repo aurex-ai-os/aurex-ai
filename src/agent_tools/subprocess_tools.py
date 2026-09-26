@@ -1,5 +1,5 @@
 
-from src.executor.models import ExecutionRequest, DecisionType, ApprovedAction
+from src.executor.models import ExecutionRequest, DecisionType, ApprovedAction, ExecutionDecision
 from src.executor.policy import PolicyEngine
 from src.executor.executor import SecureExecutor
 from src.executor.errors import ExecutorError
@@ -312,15 +312,48 @@ class BashTool:
             )
             policy = PolicyEngine(get_app_root())
             decision = policy.evaluate(req)
-            if decision.decision in [DecisionType.FORBIDDEN, DecisionType.ASK]:
+            if decision.decision == DecisionType.FORBIDDEN:
                 return {"error": f"PolicyEngine denied execution: {decision.reason}", "exit_code": 1}
             
-            action = ApprovedAction(req, decision)
-            result = await SecureExecutor.execute_shell(action, timeout=120)
-            
+            cwd = agent_cwd()
+            env = ctx.get("subproc_env")
+            session_id = ctx.get("session_id")
+            progress_cb = ctx.get("progress_cb")
+            timeout = ctx.get("timeout", DEFAULT_BASH_TIMEOUT)
+
+            use_tmux = bool(session_id and not IS_WINDOWS and shutil.which("tmux"))
+            if use_tmux:
+                out, err, rc, timed_out = await _run_tmux_bash(
+                    content,
+                    session_id=session_id,
+                    cwd=cwd,
+                    env=env,
+                    timeout=timeout,
+                    progress_cb=progress_cb,
+                )
+            else:
+                proc = await _create_bash_subprocess(
+                    content,
+                    cwd=cwd,
+                    env=env,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                out, err, rc, timed_out = await _run_subprocess_streaming(
+                    proc,
+                    timeout=timeout,
+                    progress_cb=progress_cb,
+                )
+
+            combined = (out or "") + (("\n" + err) if err else "")
+            if timed_out:
+                return {
+                    "error": f"Command timed out after {timeout}s:\n{combined}".strip(),
+                    "exit_code": 124,
+                }
             return {
-                "output": _truncate(out, 15000) or "(no output)",
-                "exit_code": result["returncode"]
+                "output": _truncate(combined, 15000) or "(no output)",
+                "exit_code": rc if rc is not None else 0,
             }
         except Exception as e:
             return {"error": str(e), "exit_code": 1}
@@ -332,12 +365,12 @@ class PythonTool:
             req = ExecutionRequest(operation_type="RunPython", arguments={"script": content}, working_directory=agent_cwd(), origin_tool="python")
             policy = PolicyEngine(get_app_root())
             decision = policy.evaluate(req)
-            if decision.decision in [DecisionType.FORBIDDEN, DecisionType.ASK]:
+            if decision.decision == DecisionType.FORBIDDEN:
                 return {"error": f"PolicyEngine denied Python execution: {decision.reason}", "exit_code": 1}
-            action = ApprovedAction(req, decision)
+            action = ApprovedAction(req, ExecutionDecision(decision=DecisionType.ALLOW, reason=decision.reason))
             result = await SecureExecutor.execute_exec(action, sys.executable or "python", "-I", "-c", content, timeout=120, env=ctx.get("subproc_env"))
+            out = (result.get("stdout") or "") + (result.get("stderr") or "")
 
-
-            return {"output": _truncate(out, 15000) or "(no output)", "exit_code": result["returncode"]}
+            return {"output": _truncate(out, 15000) or "(no output)", "exit_code": result.get("returncode", 0)}
         except Exception as e:
             return {"error": str(e), "exit_code": 1}

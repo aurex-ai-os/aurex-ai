@@ -839,21 +839,28 @@ export function mdToHtml(src, opts) {
        .replace(/^# (.*)$/gm, '<h1>$1</h1>');
 
   // Ordered lists (1. 2. 3. etc.)
-  s = s.replace(/^(\d+)\. (.*)$/gm, '<oli>$2</oli>');
-  s = s.replace(/(?:^|\n)(<oli>[\s\S]*?)(?=\n(?!<oli>)|$)/g, m => `<ol>${m.trim().replace(/<\/?oli>/g, (t) => t === '<oli>' ? '<li>' : '</li>')}</ol>`);
+  s = s.replace(/^([ \t]*)(\d+)\. (.*)$/gm, (_, ind, num, text) => {
+    const indentStyle = ind ? ` style="margin-left:${Math.min(ind.length * 10, 40)}px"` : '';
+    return `<oli${indentStyle}>${text}</oli>`;
+  });
+  s = s.replace(/(?:^|\n)(<oli\b[\s\S]*?)(?=\n(?!<oli\b)|$)/g, m => `<ol>${m.trim().replace(/<\/?oli\b([^>]*)>/g, (t, attr) => t.startsWith('</') ? '</li>' : `<li${attr || ''}>`)}</ol>`);
 
   // GitHub-style task lists (- [ ] / - [x]) → checkbox items. Must run before
   // the generic unordered-list rule so the "- " prefix isn't consumed first.
   // Emits <uli> (with a class) so the unordered-list wrapper below treats it
   // as a list item. Used by plan mode: plan + progress render as a checklist.
-  s = s.replace(/^(?:- |\* )\[([ xX])\] (.*)$/gm, (_m, mark, text) => {
+  s = s.replace(/^([ \t]*)(?:- |\* )\[([ xX])\] (.*)$/gm, (_m, ind, mark, text) => {
     const done = mark.toLowerCase() === 'x';
-    return `<uli class="task-item${done ? ' task-done' : ''}"><span class="task-check" aria-hidden="true"></span><span class="task-text">${text}</span></uli>`;
+    const indentStyle = ind ? ` style="padding-left:${Math.min(ind.length * 12, 48)}px"` : '';
+    return `<uli class="task-item${done ? ' task-done' : ''}"${indentStyle}><span class="task-check" aria-hidden="true"></span><span class="task-text">${text}</span></uli>`;
   });
 
   // Unordered lists. <uli> may carry attributes (task-item class), so the
   // wrapper preserves them when converting <uli ...> → <li ...>.
-  s = s.replace(/^(?:- |\* )(.*)$/gm, '<uli>$1</uli>');
+  s = s.replace(/^([ \t]*)(?:- |\* )(.*)$/gm, (_, ind, text) => {
+    const indentStyle = ind ? ` style="margin-left:${Math.min(ind.length * 10, 40)}px"` : '';
+    return `<uli${indentStyle}>${text}</uli>`;
+  });
   s = s.replace(/(^|\n)((?:<uli\b[^>]*>[^\n]*<\/uli>(?:\n|$))+)/g, (_, prefix, block) =>
     `${prefix}<ul>${block.trim().replace(/<uli\b([^>]*)>/g, '<li$1>').replace(/<\/uli>/g, '</li>')}</ul>`);
 

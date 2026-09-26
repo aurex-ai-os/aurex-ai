@@ -912,7 +912,7 @@ _API_HOSTS = frozenset([
     "api.together.xyz", "api.fireworks.ai",
     "api.perplexity.ai", "api.x.ai",
     "ollama.com", "api.venice.ai", "api.kimi.com",
-    "api.githubcopilot.com",
+    "api.githubcopilot.com", "bluesminds.com",
 ])
 _MCP_KEYWORDS = frozenset(["mcp", "browse", "browser", "website", "calendar", "event", "email",
                            "gmail", "screenshot", "navigate", "click", "miniflux", "rss", "feed"])
@@ -3985,8 +3985,14 @@ async def stream_agent_loop(
             and not _active_document_relevant
             and not active_email
         ):
-            _relevant_tools = set(_WORKSPACE_TERMINUS_TOOLS)
-            logger.info("[tool-rag] Workspace file/terminal request; using Aurex Terminus toolset")
+            _prior_extras = (_relevant_tools or set()) & {"manage_notes", "manage_calendar", "manage_memory"}
+            _ql = (_retrieval_query or _last_user or "").lower()
+            if any(w in _ql for w in ("note", "notes", "todo", "checklist", "memo", "study guide", "formula")):
+                _prior_extras.add("manage_notes")
+            if any(w in _ql for w in ("calendar", "schedule", "event", "meeting", "block", "exam", "date")):
+                _prior_extras.add("manage_calendar")
+            _relevant_tools = set(_WORKSPACE_TERMINUS_TOOLS) | _prior_extras
+            logger.info("[tool-rag] Workspace file/terminal request; using Aurex Terminus toolset (extras=%s)", _prior_extras)
 
     # If this turn targets the open document, keep editing tools available
     # regardless of which selection path (RAG, keyword, caller-provided) ran.
@@ -4202,56 +4208,36 @@ async def stream_agent_loop(
     _route_context_lengths = {}
 
     async def _trim_route_request_messages(candidate_url, candidate_model, route_messages):
-        """Apply the candidate route's own context budget using the Context Engine."""
+        """Apply the candidate route's own context budget before dispatch."""
         try:
-            from src.context_engine.engine import ContextEngine
-            from src.context_engine.gatherers.legacy import LegacyMessagesGatherer
-            from src.context_engine.models import ContextRequest
-            from src.model_context import budget_context_for_model
-            from src.settings import get_setting
-            from src.context_budget import DEFAULT_BUDGET
-            
-            candidate_context = budget_context_for_model(
+            import src.context_budget as context_budget
+            import src.context_compactor as context_compactor
+            import src.model_context as model_context
+
+            candidate_context = model_context.budget_context_for_model(
                 candidate_url, candidate_model, fallback=context_length
             )
             _route_context_lengths[(candidate_url, candidate_model)] = candidate_context
-            soft_budget = int(get_setting("agent_input_token_budget", DEFAULT_BUDGET) or 0)
-            
-            # ContextEngine Pipeline
-            engine = ContextEngine([LegacyMessagesGatherer(route_messages)])
-            req = ContextRequest(owner=owner, session_id=session_id)
-            
-            result = await engine.build_context(req, candidate_model, token_budget=soft_budget if soft_budget > 0 else candidate_context)
-            final_messages = result["messages"]
-            
-            def _without_protection(items):
-                return [{k: v for k, v in message.items() if k != "_protected"} for message in items]
-                
-            return _without_protection(final_messages)
-        except Exception as e:
-            logger.warning("[agent] ContextEngine trim skipped for route model=%s: %s", candidate_model, e)
-            def _without_protection(items):
-                return [{k: v for k, v in message.items() if k != "_protected"} for message in items]
-            return _without_protection(route_messages)
+            soft_budget = int(get_setting("agent_input_token_budget", context_budget.DEFAULT_BUDGET) or 0)
             before_trim_tokens = estimate_tokens(route_messages)
             reserve_tokens = min(max(max_tokens or 1024, 512), 2048)
             try:
                 hard_max = int(
-                    get_setting("agent_input_token_hard_max", DEFAULT_HARD_MAX)
-                    or DEFAULT_HARD_MAX
+                    get_setting("agent_input_token_hard_max", context_budget.DEFAULT_HARD_MAX)
+                    or context_budget.DEFAULT_HARD_MAX
                 )
             except (TypeError, ValueError):
-                hard_max = DEFAULT_HARD_MAX
+                hard_max = context_budget.DEFAULT_HARD_MAX
             if hard_max <= 0:
-                hard_max = DEFAULT_HARD_MAX
-            budget_is_explicit = _budget_is_explicit(soft_budget)
-            effective_budget = compute_input_token_budget(
+                hard_max = context_budget.DEFAULT_HARD_MAX
+            budget_is_explicit = context_budget.budget_is_explicit(soft_budget)
+            effective_budget = context_budget.compute_input_token_budget(
                 soft_budget,
                 candidate_context,
                 budget_is_explicit,
                 hard_max=hard_max,
             )
-            trimmed_messages = trim_for_context(
+            trimmed_messages = context_compactor.trim_for_context(
                 route_messages,
                 effective_budget,
                 reserve_tokens=reserve_tokens,
@@ -4267,6 +4253,8 @@ async def stream_agent_loop(
                     effective_budget,
                     reserve_tokens,
                 )
+            def _without_protection(items):
+                return [{k: v for k, v in message.items() if k != "_protected"} for message in items]
             return _without_protection(trimmed_messages)
         except Exception as e:
             logger.warning(
@@ -4274,6 +4262,8 @@ async def stream_agent_loop(
                 candidate_model,
                 e,
             )
+            def _without_protection(items):
+                return [{k: v for k, v in message.items() if k != "_protected"} for message in items]
             return _without_protection(route_messages)
 
     async def _build_route_request_state(candidate_url, candidate_model, candidate_headers, source_messages):

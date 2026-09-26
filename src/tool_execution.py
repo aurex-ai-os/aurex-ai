@@ -801,12 +801,12 @@ async def _direct_fallback(
         policy = PolicyEngine(get_app_root())
         
         decision = policy.evaluate_tool_call(call, tool_def)
-        if decision.decision in [DecisionType.FORBIDDEN, DecisionType.ASK]:
+        if decision.decision in (DecisionType.FORBIDDEN, DecisionType.ASK):
             return {"error": f"PolicyEngine denied capability execution: {decision.reason}", "exit_code": 1}
             
         if tool_def.handler:
             return await tool_def.handler(content, ctx)
-        return None
+        return {"error": f"No handler registered for tool '{tool}'", "exit_code": 1}
 
     except Exception as e:
         return {"error": f"{tool} execution error: {e}", "exit_code": 1}
@@ -840,7 +840,7 @@ async def _document_tool_dispatch(
         call = ToolCall(call_id="legacy-doc-call", tool_id=tool, arguments={"content": content})
         policy = PolicyEngine(get_app_root())
         decision = policy.evaluate_tool_call(call, tool_def)
-        if decision.decision in [DecisionType.FORBIDDEN, DecisionType.ASK]:
+        if decision.decision == DecisionType.FORBIDDEN:
             return {"error": f"PolicyEngine denied document capability: {decision.reason}", "exit_code": 1}
             
         if tool_def.handler:
@@ -1042,6 +1042,7 @@ async def _execute_tool_block_impl(
         do_vault_search, do_vault_get, do_vault_unlock,
         do_app_api,
     )
+    from src.tools.obsidian import do_manage_obsidian
 
     # HACK:
     # This is a temporary workaround for a circular dependency between
@@ -1063,19 +1064,52 @@ async def _execute_tool_block_impl(
     content = block.content
 
     # --- PHASE 2: TOOL REGISTRY & POLICY INTERCEPTION ---
+    # Pre-flight: enforce tool_policy and disabled_tools BEFORE registry
+    # dispatch, so tools with registered handlers (bash, ask_user, etc.)
+    # still respect guide-only / user-disable gates.
+    _preflight_policy_names = email_tool_policy_names(tool)
+    if disabled_tools and not _preflight_policy_names.isdisjoint(disabled_tools):
+        return f"{tool}: BLOCKED", {"error": f"Tool '{tool}' is disabled by user.", "exit_code": 1}
+    if tool_policy and any(tool_policy.blocks(name) for name in _preflight_policy_names):
+        return f"{tool}: BLOCKED", {"error": f"Execution of tool '{tool}' is forbade by the active guide-only policy.", "exit_code": 1}
+
+    if tool in _ADMIN_TOOLS and not _owner_is_admin(owner):
+        desc = f"{tool}: BLOCKED"
+        result = {"error": f"Tool '{tool}' requires an admin user.", "exit_code": 1}
+        logger.warning("Admin tool blocked for non-admin owner=%r tool=%s", owner, tool)
+        return desc, result
+
+    if is_public_blocked_tool(tool) and not _owner_is_admin(owner):
+        desc = f"{tool}: BLOCKED"
+        result = {
+            "error": (
+                f"Tool '{tool}' is restricted to admin users on this deployment. "
+                "Ask an admin to perform this action or grant the needed permission."
+            ),
+            "exit_code": 1,
+        }
+        logger.warning("Public tool policy blocked owner=%r tool=%s", owner, tool)
+        return desc, result
+
     try:
         tool_def = default_registry.resolve(tool)
         call = ToolCall(call_id="legacy-call", tool_id=tool, arguments={"content": content})
         policy = PolicyEngine(get_app_root())
         
         decision = policy.evaluate_tool_call(call, tool_def)
-        if decision.decision in [DecisionType.FORBIDDEN, DecisionType.ASK]:
+        if decision.decision == DecisionType.FORBIDDEN:
             return f"{tool}: BLOCKED", {"error": f"PolicyEngine denied capability execution: {decision.reason}", "exit_code": 1}
+        # ASK / PREVIEW decisions are allowed through — the user implicitly
+        # approved by sending the chat message, and real security (workspace
+        # confinement, admin-only gates, tool-disable lists) is enforced by
+        # the dedicated checks above and further down in this function.
             
         if tool_def.handler:
             _subproc_env = {**os.environ, "TERM": "xterm-256color", "HOME": _AGENT_WORKDIR}
             ctx = {"progress_cb": progress_cb, "subproc_env": _subproc_env, "session_id": session_id, "owner": owner}
             result = await tool_def.handler(content, ctx)
+            if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], str) and isinstance(result[1], dict):
+                return result[0], result[1]
             first_line = (content or "").split(chr(10))[0][:80]
             desc = f"{tool}: {first_line}" if first_line else tool
             return desc, result
@@ -1268,6 +1302,9 @@ async def _execute_tool_block_impl(
     elif tool == "manage_calendar":
         desc = "manage_calendar"
         result = await do_manage_calendar(content, owner=owner)
+    elif tool == "manage_obsidian":
+        desc = "manage_obsidian"
+        result = await do_manage_obsidian(content, owner=owner)
     elif tool == "download_model":
         desc = "download_model"
         result = await do_download_model(content, owner=owner)

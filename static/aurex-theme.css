@@ -1508,8 +1508,337 @@ body:not(.sidebar-collapsed) .hamburger-btn {
   margin-bottom: 16px;
 }
 
-.pi-pref-info h4 { margin: 0 0 4px 0; font-size: 15px; }
-.pi-pref-info p { margin: 0; font-size: 13px; color: var(--aurex-text-muted); }
+
+/* Desktop Backdrop & Modal Overlay for Provider Intelligence */
+#provider-intelligence-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(4, 7, 14, 0.78) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  z-index: 2500 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: auto !important;
+  opacity: 1;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#provider-intelligence-modal.hidden {
+  display: none !important;
+  pointer-events: none !important;
+  opacity: 0;
+}
+
+/* Quick Action Navigation Cards on Overview */
+.pi-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.pi-action-card {
+  background: var(--aurex-surface);
+  border: 1px solid var(--aurex-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all 0.2s ease;
+}
+
+.pi-action-card:hover {
+  background: var(--aurex-surface-hover);
+  border-color: var(--aurex-accent);
+  transform: translateY(-2px);
+}
+
+.pi-action-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--aurex-accent-soft);
+  color: var(--aurex-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pi-action-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--aurex-text);
+  margin-bottom: 2px;
+}
+
+.pi-action-desc {
+  font-size: 12px;
+  color: var(--aurex-text-muted);
+}
+
+/* Health Tab Styles */
+.pi-health-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.pi-health-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.pi-health-card {
+  background: var(--aurex-surface);
+  border: 1px solid var(--aurex-border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.pi-health-card:hover {
+  border-color: var(--aurex-border-hover);
+  transform: translateY(-2px);
+}
+
+.pi-health-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.pi-health-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--aurex-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pi-health-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pi-health-badge.healthy {
+  background: rgba(46, 160, 67, 0.15);
+  color: #3fb950;
+  border: 1px solid rgba(46, 160, 67, 0.3);
+}
+
+.pi-health-badge.disabled {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.pi-health-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: color-mix(in srgb, var(--aurex-bg) 50%, transparent);
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.pi-health-meta-label {
+  color: var(--aurex-text-muted);
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.pi-health-meta-val {
+  font-weight: 550;
+  color: var(--aurex-text);
+  font-family: 'Fira Code', monospace;
+}
+
+.pi-health-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.pi-ping-btn {
+  background: transparent;
+  border: 1px solid var(--aurex-border);
+  color: var(--aurex-text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.pi-ping-btn:hover {
+  background: var(--aurex-surface-hover);
+  border-color: var(--aurex-accent);
+}
+
+/* Usage Tab Styles */
+.pi-usage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.pi-usage-stat-card {
+  background: var(--aurex-surface);
+  border: 1px solid var(--aurex-border);
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.pi-usage-stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--aurex-text-subtle);
+  margin-bottom: 8px;
+}
+
+.pi-usage-stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--aurex-text);
+  font-family: 'Fira Code', monospace;
+  margin-bottom: 4px;
+}
+
+.pi-usage-stat-sub {
+  font-size: 12px;
+  color: var(--aurex-text-muted);
+}
+
+.pi-usage-section {
+  background: var(--aurex-surface);
+  border: 1px solid var(--aurex-border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.pi-usage-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--aurex-text);
+}
+
+/* Routing Tab Styles */
+.pi-routing-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.pi-routing-pipeline-box {
+  background: var(--aurex-surface);
+  border: 1px solid var(--aurex-border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.pi-pipeline-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.pi-pipeline-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--aurex-bg) 60%, transparent);
+  border-left: 3px solid var(--aurex-accent);
+}
+
+.pi-step-num {
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  background: var(--aurex-accent-soft);
+  color: var(--aurex-accent);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.pi-step-body h5 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: var(--aurex-text);
+}
+
+.pi-step-body p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--aurex-text-muted);
+}
+
+.pi-sim-panel {
+  background: var(--aurex-surface);
+  border: 1px solid var(--aurex-border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.pi-sim-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+  align-items: flex-end;
+}
+
+.pi-sim-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pi-sim-form-group label {
+  font-size: 12px;
+  color: var(--aurex-text-muted);
+  font-weight: 500;
+}
+
+.pi-sim-res-box {
+  margin-top: 20px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--aurex-accent-soft) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--aurex-accent) 30%, transparent);
+}
 
 /* Responsive Mobile Layout for Provider Intelligence */
 @media (max-width: 768px) {

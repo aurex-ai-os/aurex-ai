@@ -2043,9 +2043,10 @@ def llm_call(url: str, model: str, messages: List[Dict], temperature: float = LL
         if max_tokens and max_tokens > 0:
             tok_key = "max_completion_tokens" if _uses_max_completion_tokens(model) else "max_tokens"
             payload[tok_key] = max_tokens
-        elif provider == "openrouter":
+        else:
             tok_key = "max_completion_tokens" if _uses_max_completion_tokens(model) else "max_tokens"
-            payload[tok_key] = 2048
+            is_free = ":free" in (model or "").lower() or "bluesminds" in str(target_url or "").lower() or "localhost" in str(target_url or "").lower() or "127.0.0.1" in str(target_url or "").lower()
+            payload[tok_key] = 8192 if is_free else 2048
         _apply_local_generation_stability(payload, target_url, model)
         if provider == "mistral" and _supports_thinking(model):
             payload["reasoning_effort"] = _MISTRAL_REASONING_EFFORT
@@ -2407,9 +2408,10 @@ async def llm_call_async(
         if max_tokens and max_tokens > 0:
             tok_key = "max_completion_tokens" if _uses_max_completion_tokens(model) else "max_tokens"
             payload[tok_key] = max_tokens
-        elif provider == "openrouter":
+        else:
             tok_key = "max_completion_tokens" if _uses_max_completion_tokens(model) else "max_tokens"
-            payload[tok_key] = 2048
+            is_free = ":free" in (model or "").lower() or "bluesminds" in str(target_url or "").lower() or "localhost" in str(target_url or "").lower() or "127.0.0.1" in str(target_url or "").lower()
+            payload[tok_key] = 8192 if is_free else 2048
         # Suppress thinking for qwen3/gemma4 on Ollama /v1 — same as stream_llm.
         if _is_ollama_openai_compat_url(url) and _supports_thinking(model):
             payload["think"] = False
@@ -2659,9 +2661,10 @@ async def _stream_llm_inner(url: str, model: str, messages: List[Dict], temperat
         if max_tokens and max_tokens > 0:
             tok_key = "max_completion_tokens" if _uses_max_completion_tokens(model) else "max_tokens"
             payload[tok_key] = max_tokens
-        elif provider == "openrouter":
+        else:
             tok_key = "max_completion_tokens" if _uses_max_completion_tokens(model) else "max_tokens"
-            payload[tok_key] = 2048
+            is_free = ":free" in (model or "").lower() or "bluesminds" in str(target_url or "").lower() or "localhost" in str(target_url or "").lower() or "127.0.0.1" in str(target_url or "").lower()
+            payload[tok_key] = 8192 if is_free else 2048
         if tools:
             payload["tools"] = _alias_harmony_tools(tools, model)
         elif tool_choice_none:

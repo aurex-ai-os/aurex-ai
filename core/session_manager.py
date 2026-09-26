@@ -298,7 +298,7 @@ class SessionManager:
             db.commit()
 
             # Store DB ID on the in-memory message for edit/delete by ID
-            message.metadata['_db_id'] = msg_id
+            message.metadata['_db_id'] = db_message.id
 
             logger.debug(f"Persisted message to session {session_id}")
 

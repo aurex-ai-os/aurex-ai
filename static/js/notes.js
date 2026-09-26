@@ -4,6 +4,7 @@
  */
 
 import uiModule from './ui.js';
+import markdownModule from './markdown.js';
 import { spawnConfetti } from './compare/vote.js';
 import * as Modals from './modalManager.js';
 import { attachColorPicker } from './colorPicker.js';
@@ -527,6 +528,20 @@ function _linkify(s) {
     return `<a href="${_attrEsc(href)}" class="note-link" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${url}</a>` + (url !== m ? m.slice(url.length) : '');
   });
 }
+
+// Render markdown layout for notes (headers ##, bold, lists, math, tables, code)
+function _renderNoteMarkdown(s) {
+  if (!s) return '';
+  try {
+    if (markdownModule && typeof markdownModule.mdToHtml === 'function') {
+      return markdownModule.mdToHtml(s);
+    }
+  } catch (e) {
+    console.warn('Note markdown rendering error:', e);
+  }
+  return _linkify(s);
+}
+
 function _uid() { return Math.random().toString(36).slice(2, 10); }
 
 // Mobile swipe-to-dismiss for the notes sheet. Mirrors the document panel
@@ -1841,7 +1856,7 @@ function _renderNotes() {
       if (note.note_type === 'goal' && (note.content || '').trim()) {
         const fullText = note.content || '';
         const preview = fullText.length > 300 ? fullText.slice(0, 300) + '…' : fullText;
-        contentHtml += `<div class="note-goal-desc">${_esc(preview)}</div>`;
+        contentHtml += `<div class="note-goal-desc note-markdown-body">${_renderNoteMarkdown(preview)}</div>`;
       }
       contentHtml += '<div class="note-checklist-preview">';
       // Show ALL items — the preview container is scrollable (CSS caps
@@ -1874,10 +1889,8 @@ function _renderNotes() {
       contentHtml += '</div>';
     } else {
       const fullText = note.content || '';
-      const preview = fullText.length > 600 ? fullText.slice(0, 600) + '…' : fullText;
-      // _linkify already calls _esc internally, so URLs become clickable
-      // anchors (used by e.g. the "remind me to reply" email deep-link).
-      contentHtml = preview ? `<div class="note-content-preview">${_linkify(preview)}</div>` : '';
+      const preview = fullText.length > 800 ? fullText.slice(0, 800) + '…' : fullText;
+      contentHtml = preview ? `<div class="note-content-preview note-markdown-body">${_renderNoteMarkdown(preview)}</div>` : '';
     }
 
     const isBg = _isBgImage(note.color);
@@ -1981,6 +1994,10 @@ function _renderNotes() {
   _bindCardEvents(body);
   _animateReflow(prevPositions);
   _applyMasonry(body);
+  if (markdownModule && typeof markdownModule.renderMath === 'function') {
+    try { markdownModule.renderMath(body).then(() => _applyMasonry(body)).catch(() => {}); }
+    catch {}
+  }
 }
 
 // In grid view, lay out the cards as masonry by
@@ -2208,7 +2225,11 @@ function _bindCardEvents(body) {
   });
   // Click content — edit, or toggle select in select mode
   body.querySelectorAll('.note-content-preview').forEach(el => {
-    el.addEventListener('click', (e) => { e.stopPropagation(); tapToEditOrSelect(el.closest('.note-card')); });
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('a, button, input')) return;
+      e.stopPropagation();
+      tapToEditOrSelect(el.closest('.note-card'));
+    });
   });
   // Click empty area of checklist preview (not on checkbox/X) — edit
   body.querySelectorAll('.note-checklist-preview').forEach(el => {
@@ -2915,6 +2936,76 @@ function _applyDraftToNote(note, id) {
   return { note: merged, restored: true };
 }
 
+// ---- Markdown Note Reader & Editor Wiring ----
+
+function _wireMarkdownNote(formEl, initialContent = '') {
+  const ta = formEl.querySelector('.note-form-content');
+  const reader = formEl.querySelector('.note-form-content-reader');
+  const toggleBtn = formEl.querySelector('.note-form-md-toggle');
+  if (!ta || !reader) return;
+
+  const refreshLayout = () => {
+    const body = formEl.closest('.notes-pane-body');
+    if (body) {
+      _applyMasonry(body);
+      requestAnimationFrame(() => _applyMasonry(body));
+    }
+  };
+
+  const showPreview = (text) => {
+    reader.innerHTML = _renderNoteMarkdown(text || '');
+    if (markdownModule && typeof markdownModule.renderMath === 'function') {
+      try { markdownModule.renderMath(reader); } catch {}
+    }
+    reader.style.display = 'block';
+    ta.style.display = 'none';
+    if (toggleBtn) {
+      toggleBtn.classList.add('active');
+      toggleBtn.title = 'Switch to Edit mode';
+      toggleBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    }
+    refreshLayout();
+  };
+
+  const showEditor = (focus = true) => {
+    reader.style.display = 'none';
+    ta.style.display = '';
+    if (toggleBtn) {
+      toggleBtn.classList.remove('active');
+      toggleBtn.title = 'Preview Markdown layout';
+      toggleBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    }
+    if (focus) {
+      ta.focus({ preventScroll: true });
+    }
+    refreshLayout();
+  };
+
+  reader.onclick = (e) => {
+    if (e.target.closest('a, button, input')) return;
+    showEditor(true);
+  };
+
+  if (toggleBtn) {
+    toggleBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (ta.style.display === 'none') {
+        showEditor(true);
+      } else {
+        showPreview(ta.value);
+      }
+    };
+  }
+
+  // If opening an existing note with content, default to Preview mode
+  if ((initialContent || ta.value || '').trim()) {
+    showPreview(ta.value || initialContent);
+  } else {
+    showEditor(false);
+  }
+}
+
 // ---- Create / Edit Form ----
 
 function _buildForm(note = null) {
@@ -2932,6 +3023,9 @@ function _buildForm(note = null) {
   form.innerHTML = `
     <div class="note-form-header">
       <input type="text" class="note-form-title" placeholder="Title" value="${_esc(note?.title || '')}" />
+      <button type="button" class="note-form-icon-btn note-form-md-toggle" title="Toggle Preview / Edit (Markdown)" style="${type === 'note' ? '' : 'display:none;'}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
       <button type="button" class="note-form-icon-btn note-form-remind-btn${note?.due_date ? ' has-date' : ''}" title="Remind me">
         <svg width="31" height="31" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       </button>
@@ -2941,7 +3035,10 @@ function _buildForm(note = null) {
     ${currentImageUrl && type !== 'draw' ? `<div class="note-form-image-wrap"><img class="note-form-image" src="${_esc(currentImageUrl)}" draggable="false" /><button class="note-form-image-rm" title="Remove">&times;</button></div>` : ''}
     <div class="note-form-body">
       ${type === 'note'
-        ? `<textarea class="note-form-content" placeholder="Take a note..." rows="4">${_esc(note?.content || '')}</textarea>`
+        ? `<div class="note-md-view-wrapper">
+             <div class="note-form-content-reader note-markdown-body" style="display:none;" title="Click to edit"></div>
+             <textarea class="note-form-content" placeholder="Take a note (Markdown supported)..." rows="4">${_esc(note?.content || '')}</textarea>
+           </div>`
         : type === 'draw'
         ? _buildDrawHtml()
         : type === 'goal'
@@ -3068,8 +3165,13 @@ function _buildForm(note = null) {
           ? _stashedNoteText
           : (_stashedGoalDesc && _stashedGoalDesc)
           || (_stashedTodoItems || _stashedGoalItems || []).map(i => i.text).join('\n');
-        bodyEl.innerHTML = `<textarea class="note-form-content" placeholder="Take a note..." rows="4">${_esc(text)}</textarea>`;
+        bodyEl.innerHTML = `
+          <div class="note-md-view-wrapper">
+            <div class="note-form-content-reader note-markdown-body" style="display:none;" title="Click to edit"></div>
+            <textarea class="note-form-content" placeholder="Take a note (Markdown supported)..." rows="4">${_esc(text)}</textarea>
+          </div>`;
         _wireHashtag(bodyEl.querySelector('.note-form-content'));
+        _wireMarkdownNote(form, text);
       }
       const focusEl = newType === 'note'
         ? bodyEl.querySelector('.note-form-content')
@@ -3090,6 +3192,8 @@ function _buildForm(note = null) {
       seg?.classList.toggle('is-todo', newType === 'todo');
       seg?.classList.toggle('is-draw', newType === 'draw');
       form.querySelectorAll('.note-form-type-pill').forEach(p => p.classList.toggle('active', p.dataset.type === newType));
+      const mdToggle = form.querySelector('.note-form-md-toggle');
+      if (mdToggle) mdToggle.style.display = (newType === 'note') ? '' : 'none';
       // The standalone image preview (form-image-wrap) and the canvas would
       // otherwise both show the same image_url when editing a drawn note.
       // Hide it in draw mode, restore it when leaving draw mode.
@@ -3151,6 +3255,7 @@ function _buildForm(note = null) {
     });
   });
 
+  if (currentType === 'note') _wireMarkdownNote(form, note?.content || '');
   if (currentType === 'todo') _wireChecklist(form.querySelector('.note-form-body'));
   if (currentType === 'goal') _wireGoalForm(form, form.querySelector('.note-form-body'));
   if (currentType === 'draw') {
@@ -4695,6 +4800,10 @@ function _editNote(id) {
   // for plain notes, the first checklist item for todos, fall back to title.
   const _focusBest = () => {
     if (note.note_type === 'note' || !note.note_type) {
+      const reader = form.querySelector('.note-form-content-reader');
+      if (reader && reader.style.display !== 'none') {
+        return; // Showing markdown preview, keep in read mode
+      }
       const ta = form.querySelector('.note-form-content');
       if (ta) { ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch {} return; }
     }
@@ -4906,26 +5015,12 @@ function _openMobileFullscreenEdit(id, fromCard) {
     }, { capture: true });
   }
 
-  // Read-mode overlay for plain notes: render the content as a div with
-  // clickable hyperlinks, layered above the textarea. Tapping anywhere
-  // in the overlay that ISN'T a link hides the overlay and focuses the
-  // textarea so the user can start editing. Tapping a link opens it.
+  // Read-mode overlay for plain notes: ensure markdown reader is active
   const ta = form.querySelector('.note-form-content');
   if (ta && (note.content || '').trim()) {
-    const reader = document.createElement('div');
-    reader.className = 'note-form-content-reader';
-    reader.innerHTML = _linkify(note.content || '');
-    ta.style.display = 'none';
-    ta.insertAdjacentElement('beforebegin', reader);
-    reader.addEventListener('click', (e) => {
-      if (e.target.closest('a')) return;  // let links open normally
-      reader.remove();
-      ta.style.display = '';
-      // Let the browser place the cursor naturally — forcing
-      // setSelectionRange right after focus() raced with the underlying
-      // tap event and produced inconsistent cursor positions on mobile.
-      ta.focus({ preventScroll: true });
-    });
+    if (!form.querySelector('.note-form-content-reader')) {
+      _wireMarkdownNote(form, note.content || '');
+    }
   }
 
   // Opening an EXISTING note → read mode, no keyboard pop. Only a

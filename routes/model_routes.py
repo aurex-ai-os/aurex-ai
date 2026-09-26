@@ -1944,6 +1944,56 @@ def setup_model_routes(model_discovery):
 
     # ---- Admin: model endpoints CRUD ----
 
+    @router.get("/debug-endpoints")
+    def list_model_endpoints_debug(request: Request) -> List[Dict[str, Any]]:
+        db = SessionLocal()
+        try:
+            if _disable_stale_cookbook_local_endpoints(db):
+                _invalidate_models_cache()
+            rows = db.query(ModelEndpoint).order_by(ModelEndpoint.created_at).all()
+            results = []
+            upgraded_legacy_pins = False
+            for r in rows:
+                all_models = _cached_model_ids(r)
+                hidden = _hidden_model_ids(r)
+                pinned = _normalize_model_ids(getattr(r, "pinned_models", None))
+                ping = None
+                base = _normalize_base(r.base_url)
+                kind = _effective_endpoint_kind(r, base)
+                visible, pinned = _picker_models_for_endpoint(r, base, kind)
+                if _picker_requires_pinning(base, kind) and pinned and not _has_explicit_pinned_models(r):
+                    r.pinned_models = json.dumps(pinned)
+                    upgraded_legacy_pins = True
+                model_inventory_count = len(_merge_model_ids(all_models, pinned))
+                picker_requires_pinning = _picker_requires_pinning(base, kind)
+                status = "online" if (all_models or visible or pinned) else ("empty" if r.is_enabled else "offline")
+                results.append({
+                    "id": r.id,
+                    "name": r.name,
+                    "base_url": r.base_url,
+                    "has_key": bool(r.api_key),
+                    "api_key_fingerprint": _api_key_fingerprint(r.api_key),
+                    "is_enabled": r.is_enabled,
+                    "models": visible,
+                    "model_count": model_inventory_count,
+                    "picker_requires_pinning": picker_requires_pinning,
+                    "pinned_models": pinned,
+                    "hidden_count": len(hidden),
+                    "online": status != "offline",
+                    "status": status,
+                    "ping_error": (ping or {}).get("error") if ping else None,
+                    "model_type": getattr(r, "model_type", None) or "llm",
+                    "supports_tools": getattr(r, "supports_tools", None),
+                    "endpoint_kind": kind,
+                    "category": _classify_endpoint(base, kind),
+                    "model_refresh_mode": _endpoint_refresh_mode(r, kind),
+                    "model_refresh_interval": getattr(r, "model_refresh_interval", None),
+                    "model_refresh_timeout": getattr(r, "model_refresh_timeout", None),
+                })
+            return results
+        finally:
+            db.close()
+
     @router.get("/model-endpoints")
     def list_model_endpoints(request: Request) -> List[Dict[str, Any]]:
         require_admin(request)

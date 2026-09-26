@@ -1094,6 +1094,16 @@ function initializeEventListeners() {
       }
     });
   }
+
+  // Obsidian Knowledge Galaxy tool button
+  const toolObsidianBtn = el('tool-obsidian-btn');
+  if (toolObsidianBtn) {
+    toolObsidianBtn.addEventListener('click', () => {
+      if (window.obsidianUI) {
+        window.obsidianUI.open();
+      }
+    });
+  }
   // Refresh notes due-reminder badge on load and every 5 minutes
   if (notesModule && notesModule.refreshDueBadge) {
     notesModule.refreshDueBadge();
@@ -3745,6 +3755,7 @@ function startAurexApp() {
     'rail-tasks':     'tool-tasks-btn',
     'rail-calendar':  'tool-calendar-btn',
     'rail-notes':     'tool-notes-btn',
+    'rail-obsidian':  'tool-obsidian-btn',
     'rail-memory':    'tool-memory-btn',
     'rail-theme':     'tool-theme-btn',
     'rail-email':     'email-section-title',
@@ -3833,6 +3844,20 @@ function startAurexApp() {
       if (searchChatModule) searchChatModule.openSearch();
     });
   }
+
+  const sidebarPiBtn = el('sidebar-pi-btn');
+  if (sidebarPiBtn) {
+    sidebarPiBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (typeof window.openProviderIntelligence === 'function') {
+        window.openProviderIntelligence();
+      } else {
+        const modal = document.getElementById('provider-intelligence-modal');
+        if (modal) modal.classList.remove('hidden');
+      }
+    });
+  }
+
   // Modify form submit to handle special modes
   const chatForm = document.getElementById('chat-form');
   const originalSubmit = chatModule.handleChatSubmit;

@@ -146,6 +146,7 @@ _register(
         "manage_documents",
         "manage_memory",
         "manage_notes",
+        "manage_obsidian",
         "manage_research",
         "manage_session",
         "manage_skills",

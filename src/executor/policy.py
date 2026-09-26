@@ -13,9 +13,29 @@ class PolicyEngine:
         if not path:
             return True
         try:
-            # Resolve resolves symlinks and normalizes ../
+            from src.tool_execution import get_active_workspace, _tool_path_roots
+            ws = get_active_workspace()
             resolved = Path(path).resolve(strict=False)
-            return str(resolved).startswith(str(self.workspace_root))
+            if ws:
+                ws_path = Path(ws).resolve(strict=False)
+                try:
+                    resolved.relative_to(ws_path)
+                    return True
+                except ValueError:
+                    return False
+            # If no active workspace is bound, check against workspace_root or allowed roots
+            try:
+                resolved.relative_to(self.workspace_root)
+                return True
+            except ValueError:
+                pass
+            for r in _tool_path_roots():
+                try:
+                    resolved.relative_to(Path(r).resolve(strict=False))
+                    return True
+                except ValueError:
+                    continue
+            return False
         except Exception:
             return False
 

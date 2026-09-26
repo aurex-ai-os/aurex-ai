@@ -473,7 +473,10 @@ def build_user_content(
                 
                 # Determine format based on output of enhance (PNG or JPEG)
                 is_rgba = b'IHDR' in enhanced_bytes[:50] # Simple PNG check
-                image_format = "png" if is_rgba else "jpeg"
+                if mime and mime.startswith("image/"):
+                    image_format = mime.split("/", 1)[1]
+                else:
+                    image_format = "png" if is_rgba else "jpeg"
                 
                 content.append({
                     "type": "image_url",

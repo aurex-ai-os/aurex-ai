@@ -1,7 +1,7 @@
 import unittest
-from memory import AcademicMemory
-from integrity import AcademicIntegrityGuard
-from progress import ProgressReporter
+from src.student_intelligence.memory import AcademicMemory
+from src.student_intelligence.integrity import AcademicIntegrityGuard
+from src.student_intelligence.progress import ProgressReporter
 
 class TestStudentIntelligence(unittest.TestCase):
     def test_memory_preferences(self):

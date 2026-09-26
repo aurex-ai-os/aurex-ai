@@ -760,7 +760,7 @@ async function loadEndpoints() {
     });
     refreshDependentModelUi();
   } catch (e) {
-    const err = '<div class="admin-error">Failed to load</div>';
+    const err = '<div class="admin-error">Failed to load: ' + (e.message || String(e)) + '</div>';
     [listLocal, listApi].forEach(c => { if (c) c.innerHTML = err; });
   }
 }

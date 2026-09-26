@@ -736,6 +736,10 @@ app.include_router(setup_cleanup_routes(session_manager))
 from routes.personal_routes import setup_personal_routes
 app.include_router(setup_personal_routes(personal_docs_mgr, rag_manager, rag_available))
 
+# Obsidian Vault & Knowledge Graph
+from routes.obsidian_routes import setup_obsidian_routes
+app.include_router(setup_obsidian_routes())
+
 # Embedding model management
 from routes.embedding_routes import setup_embedding_routes
 app.include_router(setup_embedding_routes())

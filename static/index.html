@@ -252,6 +252,7 @@
   <link rel="modulepreload" href="/static/js/sessions.js">
   <link rel="modulepreload" href="/static/js/markdown.js">
 <link rel="stylesheet" href="/static/aurex-theme.css">
+<link rel="stylesheet" href="/static/css/obsidian.css">
 </head>
 <body>
   <!-- Loading overlay — hides all flashing until app is ready -->
@@ -758,6 +759,7 @@
     <button class="icon-rail-btn" id="rail-archive" title="Library"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h6M9 11h4"/></svg></button>
     <button class="icon-rail-btn" id="rail-memory" title="Brain"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg></button>
     <button class="icon-rail-btn" id="rail-notes" title="Notes"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h5"/><path d="M8 17.5 15.5 10l2.5 2.5L10.5 20H8z"/></svg></button>
+    <button class="icon-rail-btn" id="rail-obsidian" title="Obsidian Knowledge Galaxy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></button>
     <button class="icon-rail-btn" id="rail-tasks" title="Tasks"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg></button>
     <button class="icon-rail-btn" id="rail-theme" title="Theme"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20 5 5 0 0 0 5-5 3 3 0 0 0-3-3h-2a3 3 0 0 1-3-3 5 5 0 0 1 5-5"/></svg></button>
     <div style="flex:1"></div>
@@ -924,6 +926,15 @@
             <path d="M8 17.5 15.5 10l2.5 2.5L10.5 20H8z"/>
           </svg>
           <span class="grow">Notes</span>
+        </div>
+        <div class="list-item" id="tool-obsidian-btn" title="Obsidian Knowledge Galaxy & Vault" style="cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+            style="flex-shrink:0;opacity:0.8;color:#c084fc;">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+          <span class="grow" style="font-weight:550;">Obsidian</span>
+          <span class="badge" id="sidebar-obsidian-count" style="font-size:10px;padding:1px 6px;border-radius:10px;background:rgba(192,132,252,0.15);color:#c084fc;font-weight:600;">132</span>
         </div>
         <div class="list-item" id="tool-tasks-btn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1558,12 +1569,43 @@
               <div class="pi-status-sub">Active</div>
             </div>
           </div>
+          
+          <div class="pi-quick-actions">
+            <div class="pi-action-card" data-pi-jump="models">
+              <div class="pi-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+              <div>
+                <div class="pi-action-title">Browse Models</div>
+                <div class="pi-action-desc">Explore context windows & capabilities</div>
+              </div>
+            </div>
+            <div class="pi-action-card" data-pi-jump="providers">
+              <div class="pi-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></div>
+              <div>
+                <div class="pi-action-title">Provider Pools</div>
+                <div class="pi-action-desc">Manage OpenRouter, OmniRoute & pools</div>
+              </div>
+            </div>
+            <div class="pi-action-card" data-pi-jump="routing">
+              <div class="pi-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 16 16 12 12 8"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div>
+              <div>
+                <div class="pi-action-title">Routing Visualizer</div>
+                <div class="pi-action-desc">Simulate decisions & fallback chains</div>
+              </div>
+            </div>
+            <div class="pi-action-card" data-pi-jump="health">
+              <div class="pi-action-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+              <div>
+                <div class="pi-action-title">Health Matrix</div>
+                <div class="pi-action-desc">Test latency & check circuit breakers</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- MODELS -->
         <div class="pi-page" id="pi-page-models">
           <div class="pi-toolbar">
-            <input type="text" id="pi-model-search" class="pi-input" placeholder="Search models...">
+            <input type="text" id="pi-model-search" class="pi-input" placeholder="Search models or providers...">
             <select class="pi-select" id="pi-model-filter-cap">
               <option value="">All Capabilities</option>
               <option value="VISION">Vision</option>
@@ -1574,7 +1616,9 @@
               <option value="">All Types</option>
               <option value="local">Local Only</option>
               <option value="remote">Remote Only</option>
+              <option value="free">Free Only</option>
             </select>
+            <span id="pi-model-count-badge" style="margin-left:auto;align-self:center;font-size:12px;color:var(--aurex-text-muted);font-family:'Fira Code',monospace;"></span>
           </div>
           <div class="pi-model-grid" id="pi-model-grid">
             <!-- Populated by JS -->
@@ -1584,7 +1628,8 @@
         <!-- PROVIDERS -->
         <div class="pi-page" id="pi-page-providers">
           <div class="pi-toolbar">
-            <button class="pi-btn pi-btn-primary" id="pi-add-provider-btn">Connect Provider</button>
+            <button class="pi-btn pi-btn-primary" id="pi-add-provider-btn">Connect Provider / Manage Keys</button>
+            <span style="font-size:13px;color:var(--aurex-text-muted);align-self:center;">Configured endpoints, provider pools, and local inference bridges.</span>
           </div>
           <div class="pi-provider-list" id="pi-provider-list">
              <!-- Populated by JS -->
@@ -1593,17 +1638,23 @@
 
         <!-- ROUTING -->
         <div class="pi-page" id="pi-page-routing">
-          <div class="pi-routing-viz" id="pi-routing-viz">
-            <!-- Populated by JS -->
-            <div class="pi-empty-state">
-              <h3>No Active Routing Decision</h3>
-              <p>Run a task in the agent loop to see how Aurex routes it.</p>
-            </div>
+          <div id="pi-routing-content">
+            <!-- Populated by JS with Pipeline Visualizer and Interactive Simulator -->
           </div>
         </div>
 
         <!-- HEALTH -->
         <div class="pi-page" id="pi-page-health">
+          <div class="pi-health-header">
+            <div>
+              <h3 style="margin:0 0 4px 0;font-size:18px;">Provider & Endpoint Health</h3>
+              <p style="margin:0;font-size:13px;color:var(--aurex-text-muted);">Real-time status, latency metrics, and connection verifications.</p>
+            </div>
+            <button class="pi-btn pi-btn-primary" id="pi-ping-all-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Ping All Providers
+            </button>
+          </div>
           <div class="pi-health-list" id="pi-health-list">
             <!-- Populated by JS -->
           </div>
@@ -1611,9 +1662,8 @@
 
         <!-- USAGE -->
         <div class="pi-page" id="pi-page-usage">
-          <div class="pi-empty-state">
-            <h3>Usage data unavailable</h3>
-            <p>Usage metrics will appear here once tracked.</p>
+          <div id="pi-usage-content">
+            <!-- Populated by JS with TokenLedger Analytics -->
           </div>
         </div>
 
@@ -2874,6 +2924,7 @@
 <script type="module" src="/static/js/censor.js"></script>
 <script type="module" src="/static/js/settings.js?v=20260815approvalsave1"></script>
 <script type="module" src="/static/js/assistant.js"></script>
+<script type="module" src="/static/js/obsidian.js"></script>
 <script type="module" src="/static/app.js?v=20260815toolapproval4"></script>  <!-- app.js must be LAST -->
   <script type="module" src="/static/js/init.js?v=20260715freshroot3"></script>
 <script type="module" src="/static/js/a11y.js"></script>

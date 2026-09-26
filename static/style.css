@@ -34119,17 +34119,23 @@ body.notes-drag-mode .note-card-pin svg {
 }
 
 /* Read-mode overlay shown over the textarea for plain notes. Renders
-   linkified content so URLs are tappable. Click anywhere off a link
-   to flip to edit mode (focuses the underlying textarea). */
+   formatted markdown and layout so ##, headings, lists, bold, and math apply.
+   Click anywhere off a link/button to flip to edit mode. */
 .note-form-content-reader {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.55;
-  padding: 10px 6px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  padding: 10px 12px;
   color: var(--fg);
-  cursor: text;
-  min-height: 40px;
+  cursor: pointer;
+  min-height: 48px;
+  max-height: 65vh;
+  overflow-y: auto;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition: border-color 0.15s;
+}
+.note-form-content-reader:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .note-form-content-reader a {
   color: var(--accent, var(--red));
@@ -34137,6 +34143,211 @@ body.notes-drag-mode .note-card-pin svg {
   text-underline-offset: 2px;
 }
 .note-form-content-reader a:active { opacity: 0.7; }
+
+/* Note Markdown Layout & Typography */
+.note-markdown-body {
+  white-space: normal !important;
+  word-break: break-word;
+  color: var(--fg);
+}
+.note-markdown-body p {
+  margin: 0.45em 0;
+  line-height: 1.55;
+}
+.note-markdown-body h1,
+.note-markdown-body h2,
+.note-markdown-body h3,
+.note-markdown-body h4,
+.note-markdown-body h5,
+.note-markdown-body h6 {
+  margin: 0.7em 0 0.25em 0;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.note-markdown-body h1 {
+  font-size: 1.35em;
+  font-weight: 700;
+  color: var(--hl-keyword, #c678dd);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  padding-bottom: 4px;
+}
+.note-markdown-body h2 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--hl-function, #5b8def);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  padding-bottom: 3px;
+}
+.note-markdown-body h3 {
+  font-size: 1.08em;
+  font-weight: 600;
+  color: var(--hl-string, #98c379);
+}
+.note-markdown-body h4 {
+  font-size: 1.02em;
+  font-weight: 600;
+  color: var(--hl-builtin, #e5c07b);
+}
+.note-markdown-body h5,
+.note-markdown-body h6 {
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--hl-variable, #61afef);
+}
+.note-markdown-body strong,
+.note-markdown-body b {
+  color: var(--hl-builtin, #e5c07b);
+  font-weight: 600;
+}
+.note-markdown-body em,
+.note-markdown-body i {
+  color: var(--hl-params, #abb2bf);
+  font-style: italic;
+}
+.note-markdown-body ul,
+.note-markdown-body ol {
+  margin: 0.35em 0 0.55em 1.35em;
+  padding: 0;
+}
+.note-markdown-body li {
+  margin: 0.2em 0;
+  line-height: 1.45;
+}
+.note-markdown-body code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.88em;
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.note-markdown-body pre {
+  background: var(--panel, #1e1e1e);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  white-space: pre-wrap !important;
+  margin: 0.5em 0;
+}
+.note-markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+.note-markdown-body blockquote {
+  border-left: 3px solid var(--accent, #5b8def);
+  padding-left: 10px;
+  margin: 0.5em 0;
+  opacity: 0.85;
+}
+.note-markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.8em 0;
+}
+.note-markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.7em 0;
+  font-size: 0.92em;
+}
+.note-markdown-body th,
+.note-markdown-body td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+.note-markdown-body th {
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  font-weight: 600;
+  color: var(--hl-keyword, #c678dd);
+}
+.note-markdown-body a {
+  color: var(--accent, #5b8def);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.note-markdown-body a:hover {
+  opacity: 0.8;
+}
+
+/* Note preview toggle button & wrapper */
+.note-md-view-wrapper {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+}
+.note-form-md-toggle {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.note-form-md-toggle svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+.note-form-md-toggle:hover {
+  opacity: 1;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.note-form-md-toggle.active {
+  opacity: 1;
+  color: var(--accent, #5b8def);
+  border-color: var(--accent, #5b8def);
+  background: color-mix(in srgb, var(--accent, #5b8def) 14%, transparent);
+}
+
+/* Compact Card Preview in Masonry/List View */
+.note-content-preview.note-markdown-body {
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0.88;
+  max-height: 240px;
+  overflow: hidden;
+  position: relative;
+}
+.note-content-preview.note-markdown-body h1 {
+  font-size: 1.12em;
+  margin: 0.35em 0 0.15em 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.note-content-preview.note-markdown-body h2 {
+  font-size: 1.06em;
+  margin: 0.3em 0 0.15em 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.note-content-preview.note-markdown-body h3 {
+  font-size: 1em;
+  margin: 0.25em 0 0.12em 0;
+}
+.note-content-preview.note-markdown-body p {
+  margin: 0.25em 0;
+}
+.note-content-preview.note-markdown-body ul,
+.note-content-preview.note-markdown-body ol {
+  margin: 0.2em 0 0.3em 1.15em;
+}
+.note-content-preview.note-markdown-body table {
+  margin: 0.3em 0;
+  font-size: 0.85em;
+}
+.note-content-preview.note-markdown-body th,
+.note-content-preview.note-markdown-body td {
+  padding: 3px 6px;
+}
 
 /* Per-row read mode for todo items — replaces the bare <input> with a
    clickable linkified span when the value contains a URL. */
